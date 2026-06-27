@@ -1,0 +1,20 @@
+# Ignore everything in .venv
+.venv/*
+.venv/
+__pycache__/
+*.pyc
+
+# JITX build output + runtime artifacts (regenerable; not source).
+# Anchor to the project root only — the SOURCE package rp2350_console_jitx/designs/
+# (top-level Design modules) must NOT be ignored.
+/designs/
+.jitx/
+.socket.jitx
+3d-models/
+parts-db/
+.ruff_cache/
+routing/*.kicad_prl
+routing/*.kicad_pro
+routing/fp-info-cache
+routing/*-backups/
+routing/*.backup-*.kicad_pcb
