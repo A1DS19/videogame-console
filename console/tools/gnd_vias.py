@@ -1,26 +1,50 @@
 #!/usr/bin/env python3
-"""Robust GND stitcher for this JITX board.
+"""Exact-geometry GND (or any plane-net) stitcher — the post-route stitch for
+dense, fine-pitch, 4-layer JITX/atopile boards where the generic `stitch_gnd.py`
+falls short. (RP2350 console; supersedes stitch_gnd for these cases.)
 
-The cap/IC GND lands are modeled as 0.01 mm POINT pads (JITX artifact), so the
-ideal tie to the GND plane is a via placed *on the point* (via-in-pad). The
-generic pcb-route stitch_gnd starts at a 0.8 mm offset and never tries on-pad, so
-it misses these. This placer:
+Why this exists (vs stitch_gnd.py): JITX/atopile lands are 0.01 mm POINT anchors
+with the real copper in custom-pad primitives, so a half-diagonal pad radius
+grossly OVER-rejects long thin connector/ESD pads, and copper-only clearance lays
+vias that then fail JLC's drill rules. This placer instead:
 
-  1. For every GND SMD pad, places a GND through-via as close to the pad as
-     possible (on-pad first, then a small offset + a connecting GND track),
-     clearance-checked against different-net copper (copper clearance + hole
-     clearance + via-to-via hole-to-hole).
-  2. Lays a coarse plane-to-plane stitch grid to tie the F/B GND pours to the
-     solid inner GND plane.
+  STRATEGY 0  via directly ON the pad's own copper (scan the pad, `HitTest`), the
+              robust tie for signal-flanked connector/ESD GND pins (HDMI/USB-C) —
+              no track/pour dependency.
+  STRATEGY 1  via-in-pad at the anchor, else a small offset + a path-checked
+              connecting track on the pad's layer.
+  GRID        coarse plane-to-plane stitch.
+  ISLAND      a via inside every isolated GND fill-polygon (incl. inner-plane
+              fragments) so nothing floats.
 
-Through-vias span L1..L4, so a single via ties the pad's layer to the inner GND
-plane (L2). Refills zones and reports the remaining unconnected count.
+Every candidate is checked against the EXACT geometry (pads as effective-bbox
+rects, tracks as segments, vias as circles) for all THREE independent JLC minima
+— copper clearance, hole_clearance (drill→copper), hole_to_hole (drill→drill,
+every net) — plus board-edge / mounting-hole keepout (interior Edge.Cuts segs).
+Run it POST-route (pre-placing GND vias over-constrains the autorouter). Refills
+zones and reports the remaining unconnected count.
 """
 import argparse
 import math
 import pcbnew
 
 MM = 1_000_000
+
+
+def pt_rect(px, py, l, t, r, btm):
+    """Distance from point (px,py) to an axis-aligned rect (0 if inside)."""
+    dx = max(l - px, 0, px - r)
+    dy = max(t - py, 0, py - btm)
+    return math.hypot(dx, dy)
+
+
+def seg_pt(px, py, ax, ay, bx, by):
+    """Distance from point (px,py) to segment (ax,ay)-(bx,by)."""
+    dx, dy = bx - ax, by - ay
+    if dx == 0 and dy == 0:
+        return math.hypot(px - ax, py - ay)
+    tt = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+    return math.hypot(px - (ax + tt * dx), py - (ay + tt * dy))
 
 
 def main():
@@ -107,18 +131,6 @@ def main():
     placed = []  # (x,y) gnd vias
     cu_term = max(via_r + cclr, drill_r + hclr)  # via centre -> copper edge min
 
-    def pt_rect(px, py, l, t, r, btm):
-        dx = max(l - px, 0, px - r)
-        dy = max(t - py, 0, py - btm)
-        return math.hypot(dx, dy)
-
-    def seg_pt(px, py, ax, ay, bx, by):
-        dx, dy = bx - ax, by - ay
-        if dx == 0 and dy == 0:
-            return math.hypot(px - ax, py - ay)
-        tt = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
-        return math.hypot(px - (ax + tt * dx), py - (ay + tt * dy))
-
     def via_ok(x, y):
         for l, t, r, btm, net, onF, onB in rects:
             if net == gnd:
@@ -136,9 +148,8 @@ def main():
                 continue
             if seg_pt(x, y, ax, ay, bx, by) < hw + cu_term:
                 return False
-        for cx, cy, dr, net in drills:  # hole-to-hole, every net
-            d = math.hypot(x - cx, y - cy)
-            if 1e-6 < d < drill_r + dr + h2h:
+        for cx, cy, dr, net in drills:  # hole-to-hole, every net (no self in list)
+            if math.hypot(x - cx, y - cy) < drill_r + dr + h2h:
                 return False
         for ax, ay, bx, by in edge_segs:  # board edge + mounting-hole keepout
             if seg_pt(x, y, ax, ay, bx, by) < edge_keep:

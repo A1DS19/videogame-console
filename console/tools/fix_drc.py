@@ -43,7 +43,16 @@ def seg_pt(px, py, ax, ay, bx, by):
     return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
 
 
+def _ccw(ax, ay, bx, by, cx, cy):
+    return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax)
+
+
 def seg_seg(a, b, c, d):
+    """Min distance between segments a-b and c-d. 0 if they cross (else the
+    endpoint-to-segment minimum) — endpoint-only misses an X crossing → short."""
+    if (_ccw(*a, *c, *d) != _ccw(*b, *c, *d)) and \
+       (_ccw(*a, *b, *c) != _ccw(*a, *b, *d)):
+        return 0.0
     return min(seg_pt(*a, *c, *d), seg_pt(*b, *c, *d),
               seg_pt(*c, *a, *b), seg_pt(*d, *a, *b))
 
@@ -101,8 +110,10 @@ class Geom:
             if seg_pt(x, y, ax, ay, bx, by) < hw + cu:
                 return False
         for cx, cy, dr, n in self.drills:
-            d = math.hypot(x - cx, y - cy)
-            if 1e-6 < d < drill_r + dr + H2H + MARG:
+            # hole-to-hole applies to EVERY drill regardless of net; the via being
+            # moved is already excluded from Geom, so there is no "self" to skip —
+            # a candidate landing on another drill (d≈0) MUST fail.
+            if math.hypot(x - cx, y - cy) < drill_r + dr + H2H + MARG:
                 return False
         for ax, ay, bx, by in self.edges:
             if seg_pt(x, y, ax, ay, bx, by) < via_r + EDGE + MARG:
@@ -294,12 +305,22 @@ def fix_violation(board, viol):
 
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--board", required=True)
     ap.add_argument("--types", default="hole_to_hole,clearance")
     ap.add_argument("--passes", type=int, default=6)
+    # Fab minima (defaults = JLCPCB). Set --clearance to the value the board was
+    # ROUTED at so a moved item lands DRC-clean.
+    ap.add_argument("--clearance", type=float, default=0.15, help="copper clearance mm")
+    ap.add_argument("--hole-clr", type=float, default=0.254, help="drill→copper mm")
+    ap.add_argument("--h2h", type=float, default=0.4995, help="drill→drill mm")
+    ap.add_argument("--edge-clear", type=float, default=0.30, help="copper→edge mm")
     args = ap.parse_args()
     types = {t.strip() for t in args.types.split(",")}
+    global CLR, HCLR, H2H, EDGE
+    CLR, HCLR = args.clearance * MM, args.hole_clr * MM
+    H2H, EDGE = args.h2h * MM, args.edge_clear * MM
 
     for it in range(1, args.passes + 1):
         b = pcbnew.LoadBoard(args.board)
