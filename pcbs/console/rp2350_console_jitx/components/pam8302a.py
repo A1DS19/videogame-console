@@ -23,8 +23,9 @@ MSOP-8 mechanical (datasheet page 10, "Package Outline Dimensions", all mm):
   b  (lead width):      0.22-0.38
   A  (overall height):  max 1.10  (A2 body 0.75-0.95)
 
-Closed-loop gain is set externally (datasheet page 7): GV = 20*log(150k/(10k+Rin)),
-i.e. ~2x(142k/Rin) per the BOM note. The differential output is filterless and must
+Closed-loop gain is set externally (datasheet page 7): GV = 20*log(150k/(10k+Rin)) dB
+(~23.5 dB max at Rin=0; the old "2x(142k/Rin)" shorthand is wrong — it diverges at
+Rin=0). The differential output is filterless and must
 NOT be AC-coupled or ground-referenced; route VO+/VO- straight to the speaker.
 """
 

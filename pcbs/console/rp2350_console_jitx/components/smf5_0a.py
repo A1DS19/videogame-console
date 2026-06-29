@@ -1,7 +1,8 @@
 """
 Littelfuse/onsemi SMF5.0A — 5.0 V unidirectional TVS / ESD clamp, SOD-123FL.
 
-LCSC C193402.  Datasheet: docs/datasheets/SMF5.0A.pdf.
+LCSC C2759874 (as-built; mpn-resolved, so any JEDEC-equivalent SMF5.0A/SOD-123FL
+reel is acceptable).  Datasheet: docs/datasheets/SMF5.0A.pdf.
 
 Sourcing / footprint / 3D
 -------------------------

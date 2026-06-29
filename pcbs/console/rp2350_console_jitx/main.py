@@ -130,11 +130,17 @@ class ConsoleCircuit(Circuit):
         # SBU1/SBU2 unused on a USB-2.0-only design.
         self.usb.A8.no_connect()
         self.usb.B8.no_connect()
-        # USB 2.0 data: tie both reversible-C positions; route straight to native USB.
-        # (RP2350 native USB has internal series termination — no external 27 Ohm.)
+        # USB 2.0 data: tie both reversible-C positions. 27 Ohm series termination
+        # (R7/R8) close to the MCU, REQUIRED for USB impedance per the RP2350 hardware
+        # design guide §5.1 (the RP2350 PHY integrates pull-ups/downs but NOT series
+        # termination); Pico 2 W §3.7 adds the same two resistors.
+        self.r_usb_dp = Resistor(resistance=27.0, case="0402")
+        self.r_usb_dm = Resistor(resistance=27.0, case="0402")
         self.usb_data_nets = [
-            self.usb.A6 + self.usb.B6 + self.mcu.USB_DP,  # D+
-            self.usb.A7 + self.usb.B7 + self.mcu.USB_DM,  # D-
+            self.mcu.USB_DP + self.r_usb_dp.p1,            # D+: MCU pad -> 27R ...
+            self.usb.A6 + self.usb.B6 + self.r_usb_dp.p2,  # ... -> connector D+
+            self.mcu.USB_DM + self.r_usb_dm.p1,            # D-: MCU pad -> 27R ...
+            self.usb.A7 + self.usb.B7 + self.r_usb_dm.p2,  # ... -> connector D-
         ]
 
         # --- VBUS TVS: unidirectional clamp, cathode on the +5 V rail (see smf5_0a) ---
@@ -183,9 +189,11 @@ class ConsoleCircuit(Circuit):
         self.core_smps_nets = [
             self.V3V3 + self.mcu.VREG_VIN,  # core-regulator input from 3V3
             self.GND + self.mcu.VREG_PGND,  # core-regulator power ground
-            # L1 (polarized): VREG_LX = dot/+ terminal (P1); P2 -> DVDD.
-            self.VREG_LX + self.mcu.VREG_LX + self.l_core.P1,
-            self.DVDD + self.l_core.P2,
+            # L1 (polarized): RPi Fig 25 puts the polarity dot on the DVDD/output side
+            # (current exits at the dot). dot/P1 -> DVDD; P2 -> VREG_LX switch node.
+            # Physical rotation confirmed against Fig 23 in the 3D view at the export.
+            self.VREG_LX + self.mcu.VREG_LX + self.l_core.P2,
+            self.DVDD + self.l_core.P1,
             # DVDD 1.1 V feeds the 3 core pads and the regulator feedback sense.
             self.DVDD
             + self.mcu.DVDD[0]
@@ -198,6 +206,11 @@ class ConsoleCircuit(Circuit):
         self.c6_core_in.insert(self.mcu.VREG_VIN, self.mcu.VREG_PGND, short_trace=True)
         self.c7_core_out = Capacitor(capacitance=4.7e-6, case="0402")
         self.c7_core_out.insert(self.mcu.DVDD[0], self.mcu.GND, short_trace=True)
+        # 2x 100 nF on the inner DVDD pads (DVDD[1]=pad32, DVDD[2]=pad51) close to the
+        # pins per datasheet §6.1.3 (C7 4.7 uF above sits on the furthest DVDD pad).
+        self.c_dvdd = [Capacitor(capacitance=100e-9, case="0402") for _ in range(2)]
+        self.c_dvdd[0].insert(self.mcu.DVDD[1], self.mcu.GND, short_trace=True)
+        self.c_dvdd[1].insert(self.mcu.DVDD[2], self.mcu.GND, short_trace=True)
         # R3 (33 Ohm) + C9 (4.7 uF) = VREG_AVDD RC filter off 3V3.
         self.r3_avdd = Resistor(resistance=33.0, case="0402")
         self.r3_avdd.insert(self.mcu.VREG_AVDD, self.V3V3)
@@ -256,23 +269,37 @@ class ConsoleCircuit(Circuit):
             self.mcu.QSPI_SD3 + self.flash.IO3_HOLD,
         ]
 
-        # --- 12 MHz crystal + load caps ---
+        # --- 12 MHz crystal + 1k XOUT damping + load caps ---
+        # R2 (1k) in series with XOUT: REQUIRED at 3.3 V IOVDD to keep the crystal from
+        # being over-driven/damaged (RP2350 HW guide §4 Fig 10). The load cap stays on
+        # the crystal side of R2.
+        self.r_xosc = Resistor(resistance=1e3, case="0603")
         self.xtal_nets = [
             self.mcu.XIN + self.xtal.XIN,
-            self.mcu.XOUT + self.xtal.XOUT,
+            self.mcu.XOUT + self.r_xosc.p1,
+            self.r_xosc.p2 + self.xtal.XOUT,
             self.GND + self.xtal.GND,
         ]
-        # 2x ~30 pF C0G load caps (XIN/XOUT to GND). These are resonant-tank load
-        # caps, NOT power decoupling -> short_trace intentionally NOT used.
-        self.c_xin = Capacitor(capacitance=30e-12, case="0603")
+        # 2x 30 pF C0G load caps (XIN/XOUT crystal side to GND). Resonant-tank load
+        # caps, NOT power decoupling -> short_trace intentionally NOT used. C0G/NP0
+        # dielectric pinned so temperature/bias drift can't pull the oscillator.
+        self.c_xin = Capacitor(
+            capacitance=30e-12, case="0603", temperature_coefficient_code="C0G"
+        )
         self.c_xin.insert(self.xtal.XIN, self.GND)
-        self.c_xout = Capacitor(capacitance=30e-12, case="0603")
+        self.c_xout = Capacitor(
+            capacitance=30e-12, case="0603", temperature_coefficient_code="C0G"
+        )
         self.c_xout.insert(self.xtal.XOUT, self.GND)
 
         # --- BOOTSEL + RUN buttons ---
-        # BOOTSEL: pressing pulls QSPI_SS (flash CS strap) to GND at reset.
+        # BOOTSEL: pressing pulls QSPI_SS (flash CS strap) to GND at reset. R6 (1k) in
+        # series limits contention current if the button is pressed while QSPI_SS is
+        # being driven (XIP/CS active) — per RP2350 HW guide §3.1.
+        self.r_boot = Resistor(resistance=1e3, case="0603")
         self.bootsel_nets = [
-            self.mcu.QSPI_SS + self.btn_boot.A + self.btn_boot.B,
+            self.mcu.QSPI_SS + self.r_boot.p1,
+            self.r_boot.p2 + self.btn_boot.A + self.btn_boot.B,
             self.GND + self.btn_boot.C + self.btn_boot.D,
         ]
         # RUN reset: 10 k pull-up to V3V3, button to GND, 100 nF filter cap.
@@ -306,8 +333,10 @@ class ConsoleCircuit(Circuit):
 
         # HSTX GPIO -> 0 Ohm series R -> ESD shunt node -> HDMI connector.
         # Pair order: D0=GPIO12/13, D1=14/15, D2=16/17, CLK=18/19.
-        # 0 Ohm series Rs are SI/DC-block placeholders (HSTX is true differential;
-        # 0 Ohm = jumper, swappable for a small series R if SI tuning needs it).
+        # 0 Ohm series Rs are SI placeholders. HSTX is a pseudo-differential LVCMOS
+        # driver (neighbouring GPIOs driven complementary, delay-matched) — being
+        # voltage-mode is exactly why an in-line series R / 0 Ohm jumper is tolerable
+        # (a true current-mode TMDS driver would not be); swap in a small R for SI.
         _tmds_gpio_p = [12, 14, 16, 18]
         _tmds_gpio_n = [13, 15, 17, 19]
         _esd_p = [

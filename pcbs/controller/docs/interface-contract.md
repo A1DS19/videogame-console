@@ -35,7 +35,7 @@
   - Idle: console GPIO sees ~3.3 V through 10 kΩ+220 Ω → **HIGH**.
   - Pressed: NODE pulled to GND → console GPIO sees ~71 mV (10 k/220 divider) → **valid LOW**.
 - **Pull location:** **controller-end**, referenced to the console-supplied 3V3 on pin 10. (The console does **not** also need to pull these lines, but enabling its internal pull-ups is harmless and adds redundancy.)
-- **Power domain:** **3.3 V. The console MUST NOT drive 5 V onto these lines — the RP2040 is NOT 5 V tolerant.** The console supplies a clean 3.3 V (≤ a few mA) on pin 10.
+- **Power domain:** **3.3 V. The console MUST NOT drive 5 V onto these lines — they are a strict 3.3 V domain (the console is RP2350-based).** The console supplies a clean 3.3 V (≤ a few mA) on pin 10.
 - **ESD:** two 4-channel TVS arrays (SRV05-4A) on the controller clamp each signal between GND and the 3V3 rail **at the connector** (cable entry). The console may add its own, but is not required to.
 
 ## Debounce
@@ -48,12 +48,14 @@
 - Round shielded cable; the braid/foil **drain is bonded single-point at the CONSOLE end only** (chassis/console GND). The controller end **floats** the drain — avoids a ground loop over the 2–3 m run.
 - `GND` (pin 9) is the signal return for all 8 lines.
 
-## Suggested RP2040 GPIO mapping (console side — non-binding, document yours here)
+## Console-side GPIO mapping (RP2350 — the console's chosen allocation)
 
-| Net | Suggested RP2040 GPIO |
+| Net | RP2350 GPIO (console) |
 |-----|-----------------------|
-| BTN0..BTN7 | any 8 free GPIOs; configure as inputs, debounce in firmware |
-| V3V3 | a 3.3 V supply pin (low current) |
+| Port 1 BTN0..BTN7 | GPIO0, 1, 2, 3, 4, 5, 6, 7 (inputs, active-low, debounced in firmware) |
+| Port 2 BTN0..BTN7 | GPIO8, 9, 10, 11, 20, 21, 22, 23 |
+| V3V3 | 3.3 V rail (each port via a ferrite + local bulk cap) |
 | GND  | GND |
 
-> The GPIO numbers are the **console repo's** decision — record the real mapping here once chosen, so both repos share one authority.
+> Mapping recorded from the console design (`rp2350_console_jitx/main.py`). RP2350 FT GPIOs are
+> 5 V-tolerant only when IOVDD is powered; by contract these lines stay a strict 3.3 V domain.

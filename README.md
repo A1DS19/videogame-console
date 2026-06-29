@@ -48,8 +48,9 @@ Each board's `routing/` holds the canonical routed `.kicad_pcb`. The JLCPCB uplo
 
 ## Manufacturing status
 
-- **Console** — routed, 0 unconnected; one tight `hole_to_hole` in the QFN escape still wants
-  a quick interactive-router via-shove before ordering PCBA. BOM is JLCPCB-uploadable.
+- **Console** — fully routed + **DRC clean** (0 unconnected; only the benign `J1` USB-C shield
+  annular). Datasheet-validation fixes applied (81 parts). Fab package in
+  `routing/production-v2/` (gerbers + drill + CPL + STEP + JLCPCB-uploadable BOM, gate PASS).
 - **Controller** — fully routed, DRC clean, fab package ready.
 
 ## Rebuilding from source
