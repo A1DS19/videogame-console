@@ -18,7 +18,7 @@ Library: **Basic/Preferred** = free assembly; **Extended** = one-time ~$3/part s
 | J(hdmi) | HDMI Type-A recept., SMD R/A | **HDMI-001S** | C720616 | HDMI-A 19P SMD R/A | Ext | 1 | 0.27 | HDMI-001S.pdf |
 | D(hdmi) | TMDS ESD (see decision ①) | **TPD8S009DSMR** | C471873 | SON-15 | Ext | 1 | 1.31 | TPD8S009DSMR.pdf |
 | U3 | 5V→3.3V buck (see ②) | **TLV62569DBVR** | C141836 | SOT-23-5 | Ext | 1 | 0.07 | TLV62569.pdf |
-| D(vbus) | VBUS 5V TVS (unidir.) | **SMF5.0A** | C193402 | SOD-123FL | Ext | 1 | 0.03 | SMF5.0A.pdf |
+| D(vbus) | VBUS 5V TVS (unidir.) | **SMF5.0A** | C2759874 | SOD-123FL | Ext | 1 | 0.03 | SMF5.0A.pdf |
 | U4 | Mono Class-D amp (⚠️ **MSOP-8**) | **PAM8302AASCR** | C113367 | **MSOP-8** | Ext | 1 | 0.21 | PAM8302AASCR.pdf |
 | J(spk) | Speaker conn JST-PH 2-pin THT | **B2B-PH-K-S(LF)(SN)** | C131337 | PH 2.0mm 1×2 TH | Ext | 1 | 0.03 | B2B-PH-K-S.pdf |
 | L1 | Core SMPS inductor 3.3µH (polarized) | **AOTA-B201610S3R3-101-T** | C42411119 | 0806 (2016M) | Ext | 1 | 0.27 | AOTA-…pdf |
@@ -62,6 +62,8 @@ LDO fallback **AMS1117-3.3** (C6186, Basic/free) burns ~1.7W @1A → hot; not re
 - **Flash must be the 3.3V "JV"** variant — the look-alike W25Q128**JW** (1.8V) shares the footprint and will not work.
 
 ## Component-modeling notes (Phase 1 DB-probe targets)
-DB-probe `Part(mpn=...)` with these LCSC: C42415655, C97521, C9002, C720616, C471873, C141836, C193402,
+DB-probe `Part(mpn=...)` with these LCSC: C42415655, C97521, C9002, C720616, C471873, C141836, C2759874,
 C113367, C131337, C42411119, C23733, C144400, C20615829, C165948. Reviewer-verify every IC pin map vs the
 saved datasheet (RP2350B QFN-80 is the dead-board risk — datasheet §1.2.1.2). 3D model required on every part.
+SMF5.0A is mpn-resolved (no pinned LCSC), so the fab BOM ships the as-built reel **C2759874** — a
+JEDEC-equivalent SMF5.0A/SOD-123FL; any RoHS SMF5.0A in SOD-123FL is acceptable.

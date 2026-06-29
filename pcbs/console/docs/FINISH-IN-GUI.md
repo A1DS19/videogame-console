@@ -29,7 +29,7 @@ pins, which an autorouter can't do cleanly. Open the board in KiCad and:
 7. The 4 TMDS pairs routed as default single-ended traces. Re-route them as **diff pairs,
    short + length-matched, 100 Ω** (HDMI is left-edge hard against the MCU, so they're short).
    The JITX source already declares the 100 Ω `DRS_100` constraint; set a matching KiCad
-   netclass/diff-pair (≈0.2 mm width / 0.2 mm gap on this 7628 stackup over the L2 GND plane)
+   netclass/diff-pair (0.1722 mm width / 0.15 mm gap — the exact DRS_100 values for 100 Ω on this 7628 stackup over the L2 GND plane)
    and route with the differential-pair tool. Validate HDMI on a real TV at bring-up.
 
 ## Then hand it back

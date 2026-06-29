@@ -4,7 +4,7 @@ Big-picture reference for sub-agents. Authority for *decisions* is `docs/specs/2
 **Selected parts + LCSC + open decisions ①–④ live in `docs/sourcing.md`** (the BOM source of truth).
 
 ## Sourcing corrections (fold into modeling)
-- **PAM8302A = MSOP-8** (not SOT-23-5): pins IN+, IN−, SD, GND, VDD, OUT+, OUT−. Gain = 2×(142kΩ/Rin).
+- **PAM8302A = MSOP-8** (not SOT-23-5): pins IN+, IN−, SD, GND, VDD, OUT+, OUT−. Gain = 20·log₁₀(150kΩ/(10kΩ+Rin)) dB (≈23.5 dB max at Rin=0).
 - **HDMI TMDS ESD covers 8 lines** → 1× TPD8S009DSMR (8-ch inline) or 2× TPD4E02B04 (4-ch). Not one 4-ch part.
 - **Core SMPS (RPi Pico-2 exact):** VREG_VIN ← 3V3 → internal buck → VREG_LX → **L1 (Abracon AOTA-B201610S3R3, 3.3µH 0806, POLARIZED — model the dot)** → DVDD 1.1V; C6/C7/C9 = 3×4.7µF 0402; **R3 33Ω** + C9 = VREG_AVDD RC filter.
 - **Flash = W25Q128JV (3.3V)** — the look-alike JW (1.8V) shares the footprint and will NOT work.

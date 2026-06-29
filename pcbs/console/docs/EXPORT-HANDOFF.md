@@ -36,7 +36,7 @@ JITX→KiCad export needs a GPU (headless export is blank), exactly like the arc
 ## Review notes carried from Phase 3 (check at export, not blockers)
 - **Pad-1 orientation:** confirm the QFN-80 generator's pad-1 vs RP2350 datasheet Figure 149
   (the one residual from the pin-map verification — a generator convention, not a map error).
-- **Core inductor (L1) orientation:** `l_core` dot/P1 → VREG_LX (switch node) faces the MCU; sanity-check vs the Pico-2 reference in the 3D/layout view.
+- **Core inductor (L1) orientation:** `l_core` dot/P1 → DVDD (output) per RPi Fig 25; P2 → VREG_LX. Confirm the physical rotation faces the dot **away** from the MCU vs Fig 23 in the 3D/layout view.
 - **Bottom-side decap rotations:** power pad faces the served pin; eyeball in the 3D view.
 - **TMDS series Rs = 0 Ω placeholders** (8×) — HSTX routes direct; you may DNP them.
 - **Board 72×66 mm** is the JITX floorplan size — finalize against any enclosure constraint.
