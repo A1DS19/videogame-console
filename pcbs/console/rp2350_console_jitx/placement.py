@@ -200,6 +200,9 @@ def floorplan(circuit) -> None:
     # Core inductor: dot/P1 (= VREG_LX switch node) faces DOWN toward VREG_LX.
     _p(circuit, circuit.l_core, 4.0, 9.0, 270)
     _p(circuit, circuit.r3_avdd, 7.0, 9.0)  # VREG_AVDD RC series-R
+    # 2x 100 nF near-pin DVDD decoupling, bottom side under the inner DVDD pads.
+    _p(circuit, circuit.c_dvdd[0], 1.1, -6.5, 0, Side.Bottom)
+    _p(circuit, circuit.c_dvdd[1], 5.2, -0.55, 0, Side.Bottom)
 
     # =================================================================
     # USB-C + buck (5 V -> 3.3 V) — TOP edge, the VBUS entry.
@@ -208,6 +211,9 @@ def floorplan(circuit) -> None:
     _p(circuit, circuit.tvs_vbus.diode, 5.0, 22.0)  # VBUS clamp at the entry
     _p(circuit, circuit.r_cc1, 16.2, 26.7)  # clear of the buck body below
     _p(circuit, circuit.r_cc2, 16.2, 29.7)
+    # USB D+/D- 27 Ohm series termination, above the MCU's USB pads (top edge).
+    _p(circuit, circuit.r_usb_dp, 2.82, 12.31)
+    _p(circuit, circuit.r_usb_dm, 4.55, 12.26)
     _p(circuit, circuit.buck, 18.0, 23.0)
     _p(circuit, circuit.l_buck, 18.0, 18.5)
     _p(circuit, circuit.c_buck_in, 21.5, 23.0)
@@ -221,6 +227,7 @@ def floorplan(circuit) -> None:
     _p(circuit, circuit.xtal, 0.0, -10.0)  # XIN/XOUT on the MCU bottom edge
     _p(circuit, circuit.c_xin, -4.2, -10.0)
     _p(circuit, circuit.c_xout, 4.2, -10.0)
+    _p(circuit, circuit.r_xosc, 6.48, -8.48)  # 1k XOUT series-damping resistor
     # Audio: PWM -> RC LPF -> AC-couple -> amp -> speaker (bottom-left). Passives
     # in two columns on a 3 mm vertical pitch so the 0603 courtyards clear.
     _p(circuit, circuit.amp, -10.0, -13.0)
@@ -237,6 +244,7 @@ def floorplan(circuit) -> None:
     # board, well clear of the crystal cluster above; RUN RC right of btn_run;
     # status LED + series-R by the MCU's lower-right edge.
     _p(circuit, circuit.btn_boot, -3.0, -22.0)
+    _p(circuit, circuit.r_boot, -7.6, 5.45)  # 1k BOOTSEL series-R, near QSPI_SS pad
     _p(circuit, circuit.btn_run, 7.0, -22.0)
     _p(circuit, circuit.r_run, 14.0, -20.5)
     _p(circuit, circuit.c_run, 14.0, -23.5)
